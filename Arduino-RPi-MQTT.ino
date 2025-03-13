@@ -4,9 +4,9 @@
 #define PIR_SENSOR_PIN 2
 #define MAGNETIC_SENSOR_PIN 3
 
-const char* ssid = "TelstraE105BF";
-const char* password = "7aqz265c6d";
-const char* mqtt_server = "192.168.0.252";
+const char* ssid = "xxxxxxxxx";
+const char* password = "xxxxxxxxx";
+const char* mqtt_server = "xxx.xxx.x.x";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -18,7 +18,7 @@ void setup() {
 
   // Set static IP address (replace with an unused IP in your network range)
   IPAddress local_ip(192, 168, 0, 100);  // Example IP address
-  IPAddress gateway(192, 168, 0, 1);     // Gateway (usually your router IP)
+  IPAddress gateway(xxx, xxx, x, x);     // Gateway (usually your router IP)
   IPAddress subnet(255, 255, 255, 0);    // Subnet mask
   IPAddress dns(8, 8, 8, 8);  // Google DNS
 
