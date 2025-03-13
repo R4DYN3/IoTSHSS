@@ -16,9 +16,9 @@ void setup() {
   pinMode(PIR_SENSOR_PIN, INPUT);
   pinMode(MAGNETIC_SENSOR_PIN, INPUT_PULLUP);
 
-  // Set static IP address (replace with an unused IP in your network range)
+  // Set static IP address
   IPAddress local_ip(192, 168, 0, 100);  // Example IP address
-  IPAddress gateway(xxx, xxx, x, x);     // Gateway (usually your router IP)
+  IPAddress gateway(xxx, xxx, x, x);     // Gateway
   IPAddress subnet(255, 255, 255, 0);    // Subnet mask
   IPAddress dns(8, 8, 8, 8);  // Google DNS
 
