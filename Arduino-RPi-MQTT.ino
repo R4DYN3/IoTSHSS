@@ -1,12 +1,12 @@
-#include <PubSubClient.h>
-#include <WiFi.h>
+#include <PubSubClient.h> // For MQTT connections
+#include <WiFi.h> // For connecting to Wifi
 
 #define PIR_SENSOR_PIN 2
 #define MAGNETIC_SENSOR_PIN 3
 
-const char* ssid = "xxxxxxxxx";
-const char* password = "xxxxxxxxx";
-const char* mqtt_server = "xxx.xxx.x.x";
+const char* ssid = "xxxxxxxxx";          // Wifi Network Name
+const char* password = "xxxxxxxxx";      // Wifi Password
+const char* mqtt_server = "xxx.xxx.x.x"; // Raspberry Pi's IPv4 Address
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -16,19 +16,20 @@ void setup() {
   pinMode(PIR_SENSOR_PIN, INPUT);
   pinMode(MAGNETIC_SENSOR_PIN, INPUT_PULLUP);
 
-  // Set static IP address
-  IPAddress local_ip(192, 168, 0, 100);  // Example IP address
-  IPAddress gateway(xxx, xxx, x, x);     // Gateway
+  // Assign static IP address
+  IPAddress local_ip(192, 168, 0, 100);  // Example IP address to assign to Arduino
+  IPAddress gateway(xxx, xxx, x, x);     // Gateway - Find by ipconfig in terminal
   IPAddress subnet(255, 255, 255, 0);    // Subnet mask
   IPAddress dns(8, 8, 8, 8);  // Google DNS
 
   WiFi.config(local_ip, dns, gateway, subnet);
   
-  //Connect to Wi-Fi
+  // Connect to Wi-Fi
   Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
   Serial.println("Attempting to connect to Wi-Fi...");
 
+  // Stop connection requests after 20 tries
   int retries = 0;
   while (WiFi.status() != WL_CONNECTED && retries < 20) {
     delay(500);
@@ -36,6 +37,7 @@ void setup() {
     retries++;
   }
 
+  // Print Static IP Address after successful connection, otherwise print status error
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nConnected to Wi-Fi!");
     Serial.print("IP Address: ");
@@ -45,6 +47,7 @@ void setup() {
     Serial.println("Status: " + String(WiFi.status()));
   }
 
+  // Connect to Raspberry Pi via MQTT
   Serial.println("Attempting to connect to MQTT broker...");
   client.setServer(mqtt_server, 1883);
 
@@ -64,7 +67,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect("ESP32_Client")) {
       Serial.println("Connected!");
-      client.subscribe("test/topic");  // Subscribe to a topic for debugging
+      client.subscribe("test/topic");  // Subscribe to topic for debugging
     } else {
       Serial.print("Failed, rc=");
       Serial.print(client.state());
@@ -80,6 +83,9 @@ void loop() {
   }
   client.loop();
 
+  // Sensor read from Keyestudio Board would go here
+
+  // Example sensor read code vvv
   bool motionDetected = digitalRead(PIR_SENSOR_PIN);
   bool doorOpened = digitalRead(MAGNETIC_SENSOR_PIN) == LOW;
 
@@ -92,6 +98,8 @@ void loop() {
     Serial.println("DOOR_OPENED");
     client.publish("home/security", "DOOR_OPENED");
   }
+
+  // Firebase Upload code here
 
   delay(500);
 }
