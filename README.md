@@ -1,11 +1,9 @@
 # Arduino Sensor Monitoring and Alarm System
-code: SMARTHOUSE_ARDUINO_UNO_IOT_2025.ino
 
 ## Arduino uno - smart house code: 
 ### Description
 This Arduino project monitors various sensors (gas, light, water, soil) and triggers alarms based on certain thresholds.
 The system processes sensor data, sets warning flags, and outputs alarms without blocking the rest of the system’s operation.
-
 
 ### Features
 - **Gas Sensor**: if the gas warning bit is set, the fan on the house will automatically turn on and [TODO]: an alarm will play
@@ -52,5 +50,3 @@ The data is then streamed over serial to an Arduino uno wifi board.
 Based on the warning bit field, the house will run certain mitigations to self preserve itself:
 1. If the gas level is HIGH the fan will turn on
 2. If the light level is low a light will turn on 
-
-
