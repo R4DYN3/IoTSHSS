@@ -1,12 +1,12 @@
-#include <PubSubClient.h> // For MQTT connections
-#include <WiFi.h> // For connecting to Wifi
+#include <PubSubClient.h>  // For MQTT connections
+#include <WiFi.h>          // For connecting to Wifi
 
 #define PIR_SENSOR_PIN 2
 #define MAGNETIC_SENSOR_PIN 3
 
-const char* ssid = "xxxxxxxxx";          // Wifi Network Name
-const char* password = "xxxxxxxxx";      // Wifi Password
-const char* mqtt_server = "xxx.xxx.x.x"; // Raspberry Pi's IPv4 Address
+const char* ssid = "GS21U";           // Wifi Network Name
+const char* password = "konnect123";       // Wifi Password
+const char* mqtt_server = "192.168.1.8";  // Raspberry Pi's IPv4 Address
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -18,12 +18,12 @@ void setup() {
 
   // Assign static IP address
   IPAddress local_ip(192, 168, 0, 100);  // Example IP address to assign to Arduino
-  IPAddress gateway(xxx, xxx, x, x);     // Gateway - Find by ipconfig in terminal
+  IPAddress gateway(192, 168, 1, 1);     // Gateway - Find by ipconfig in terminal
   IPAddress subnet(255, 255, 255, 0);    // Subnet mask
-  IPAddress dns(8, 8, 8, 8);  // Google DNS
+  IPAddress dns(8, 8, 8, 8);             // Google DNS
 
   WiFi.config(local_ip, dns, gateway, subnet);
-  
+
   // Connect to Wi-Fi
   Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
@@ -67,7 +67,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect("ESP32_Client")) {
       Serial.println("Connected!");
-      client.subscribe("test/topic");  // Subscribe to topic for debugging
+      client.subscribe("home/security");  // Subscribe to topic for debugging
     } else {
       Serial.print("Failed, rc=");
       Serial.print(client.state());
@@ -79,7 +79,7 @@ void reconnect() {
 
 void loop() {
   if (!client.connected()) {
-     reconnect();
+    reconnect();
   }
   client.loop();
 
