@@ -1,11 +1,11 @@
 #include <PubSubClient.h>  // For MQTT connections
-#include <WiFi.h>          // For connecting to Wifi
+#include <WiFi.h>          // For connecting to WiFi
 
 #define PIR_SENSOR_PIN 2
 #define MAGNETIC_SENSOR_PIN 3
 
 const char* ssid = "GS21U";           // Wifi Network Name
-const char* password = "konnect123";       // Wifi Password
+const char* password = "konnect123";  // Wifi Password
 const char* mqtt_server = "192.168.1.8";  // Raspberry Pi's IPv4 Address
 
 WiFiClient espClient;
@@ -49,9 +49,8 @@ void setup() {
 
   // Connect to Raspberry Pi via MQTT
   Serial.println("Attempting to connect to MQTT broker...");
-  client.setServer(mqtt_server, 1883);
+  client.setServer(mqtt_server, 1883); // Only set the server once!
 
-  client.setServer(mqtt_server, 1883);
   while (!client.connected()) {
     if (client.connect("Arduino_Client")) {
       Serial.println("Connected to MQTT broker");
