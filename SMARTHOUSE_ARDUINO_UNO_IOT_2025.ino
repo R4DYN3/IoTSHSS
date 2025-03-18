@@ -558,7 +558,7 @@ void lock_door() {
 
 
 void setup() {
-    Serial.begin(9600); // Use hardware Serial on pins 0,1
+    Serial.begin(115200); // Use hardware Serial on pins 0,1
     INITIALISE_LCD_SCREEN();
     INITIALISE_IO_PINS();
     INITIALISE_SERVO_MOTORS();
