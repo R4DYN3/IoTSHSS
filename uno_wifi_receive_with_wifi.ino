@@ -39,23 +39,20 @@ void receiveData(SensorData* data) {
         else if (index == sizeof(SensorData)) {
             if (byte == 0x55) {  // End marker
                 Serial.println("End marker detected.");
-                
                 // Copy struct from buffer
-                //SensorData data;
                 memcpy(data, buffer, sizeof(SensorData));
+                // Print values [debugging]:
+                Serial.print("Gas: "); Serial.println(data->gas);
+                Serial.print("Light: "); Serial.println(data->light);
+                Serial.print("Water: "); Serial.println(data->water);
+                Serial.print("Soil: "); Serial.println(data->soil);
+                Serial.print("PIR Motion: "); Serial.println(data->PIR_motion);
+                Serial.print("Warnings: "); Serial.println(data->warnings, BIN); 
 
-                // Print values
-                Serial.print("Gas: "); Serial.println(data.gas);
-                Serial.print("Light: "); Serial.println(data.light);
-                Serial.print("Water: "); Serial.println(data.water);
-                Serial.print("Soil: "); Serial.println(data.soil);
-                Serial.print("PIR Motion: "); Serial.println(data.PIR_motion);
-                Serial.print("Warnings: "); Serial.println(data.warnings, BIN);
-
-                if (data.warnings & (1 << 13)) Serial.println("Warning: Gas Danger");
-                if (data.warnings & (1 << 12)) Serial.println("Warning: Low Light");
-                if (data.warnings & (1 << 11)) Serial.println("Warning: High Water Level");
-                if (data.warnings & (1 << 10)) Serial.println("Warning: Dry Soil (Hydropenia)");
+                if (data->warnings & (1 << 13)) Serial.println("Warning: Gas Danger");
+                if (data->warnings & (1 << 12)) Serial.println("Warning: Low Light");
+                if (data->warnings & (1 << 11)) Serial.println("Warning: High Water Level");
+                if (data->warnings & (1 << 10)) Serial.println("Warning: Dry Soil (Hydropenia)");
                 
                 Serial.println("----------------------");
             } else {
@@ -77,27 +74,20 @@ void receiveData(SensorData* data) {
 }
 
 
-#define PIR_SENSOR_PIN 2
-#define MAGNETIC_SENSOR_PIN 3
-
-const char* ssid = "xxxxxxxxx";          // Wifi Network Name
-const char* password = "xxxxxxxxx";      // Wifi Password
-const char* mqtt_server = "xxx.xxx.x.x"; // Raspberry Pi's IPv4 Address
+const char* ssid = "GS21U";          // Wifi Network Name
+const char* password = "konnect123";      // Wifi Password
+const char* mqtt_server = "192.168.1.8"; // Raspberry Pi's IPv4 Address
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-
-
 void setup() {
   Serial.begin(115200);
-  softSerial.begin(9600); // check up on this
-  pinMode(PIR_SENSOR_PIN, INPUT);
-  pinMode(MAGNETIC_SENSOR_PIN, INPUT_PULLUP);
+  softSerial.begin(115200); 
 
   // Assign static IP address
-  IPAddress local_ip(192, 168, 0, 100);  // Example IP address to assign to Arduino
-  IPAddress gateway(xxx, xxx, x, x);     // Gateway - Find by ipconfig in terminal
+  IPAddress local_ip(192, 168, 1, 115);  // Example IP address to assign to Arduino, note needs same first three sects, eg 192.168.1.xxx
+  IPAddress gateway(192, 168, 1, 1);     // Gateway - Find by ipconfig in terminal
   IPAddress subnet(255, 255, 255, 0);    // Subnet mask
   IPAddress dns(8, 8, 8, 8);  // Google DNS
 
@@ -146,7 +136,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect("ESP32_Client")) {
       Serial.println("Connected!");
-      client.subscribe("test/topic");  // Subscribe to topic for debugging
+      client.subscribe("home/security");  // Subscribe to topic for debugging
     } else {
       Serial.print("Failed, rc=");
       Serial.print(client.state());
@@ -156,31 +146,62 @@ void reconnect() {
   }
 }
 
+void mqqt_publish(SensorData* data)
+{
+  // warnings: (if there are no warnings, data-> warnings equal zero, doesn't go thru this control flow)
+	if(data->warnings)
+	{
+		if (data->PIR_motion)
+		{
+			Serial.println("MOTION_DETECTED");
+			client.publish("home/security", "MOTION_DETECTED");
+		}
+		// gas:
+		if (data->warnings & (1 << 13))
+		{
+			Serial.println("DANGEROUS GAS LEVELS");
+			client.publish("home/security", "DANGEROUS GAS LEVELS");
+		}
+		// low light:
+		if (data->warnings & (1 << 12)) 
+		{
+			Serial.println("WARNING: LOW LIGHT LEVELS");
+			client.publish("home/security", "WARNING: LOW LIGHT LEVELS");
+		} 
+		// high water level:
+		if (data->warnings & (1 << 11))
+		{
+			Serial.println("WARNING: RAIN");
+			client.publish("home/security", "WARNING: RAIN");
+		}
+		// soil hydropenia: 
+		if (data->warnings & (1 << 10)) 
+		{
+			Serial.println("WARNING: SOIL HYDROPENIA");
+			client.publish("home/security", "WARNING: SOIL HYDROPENIA");
+		}
+	}
+	// stream data:
+	//Serial.print("Gas: "); Serial.println(data->gas);
+	client.publish("home/data/gas", (char*)data->gas);		//todo: evaluate if this works
+	client.publish("home/data/light", (char*)data->light);
+	client.publish("home/data/water", (char*)data->water);
+	client.publish("home/data/soil", (char*)data->soil);
+	client.publish("home/data/pir_motion", (char*)data->PIR_motion);
+}
+
 void loop() {
   if (!client.connected()) {
      reconnect();
   }
   client.loop();
 
-  // Sensor read from Keyestudio Board would go here
+  // Initialise struct to hold sensor data in: 
   SensorData data;
+  // call receive data func 
   receiveData(&data);
-
-  // Example sensor read code vvv
-  bool motionDetected = digitalRead(PIR_SENSOR_PIN);
-  bool doorOpened = digitalRead(MAGNETIC_SENSOR_PIN) == LOW;
-
-  if (motionDetected) {
-    Serial.println("MOTION_DETECTED");
-    client.publish("home/security", "MOTION_DETECTED");
-  }
-
-  if (doorOpened) {
-    Serial.println("DOOR_OPENED");
-    client.publish("home/security", "DOOR_OPENED");
-  }
-
+  mqqt_publish(&data);
   // Firebase Upload code here
-
   delay(500);
 }
+
