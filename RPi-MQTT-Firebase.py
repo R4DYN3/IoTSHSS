@@ -3,6 +3,7 @@ import struct
 import firebase_admin
 from firebase_admin import credentials, firestore
 import datetime
+import requests
 
 # Define MQTT broker details
 MQTT_BROKER = "192.168.1.8"  # Update this to your broker's IP
@@ -15,6 +16,20 @@ STRUCT_FORMAT = "<5I H"  # 5x uint32_t + 1x uint16_t
 cred = credentials.Certificate('/home/alex/Documents/Smart Home Security System/iotshss-firebase-adminsdk-fbsvc-feb96a7009.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+def send_pushover_notification(message):
+    user_key = "u4jn6g4g9rbsvnbsevfiymwk8uiuux"
+    api_token = "aosytq27bi5x2nsk9gct1ofsozfwwm"
+    
+    url = "https://api.pushover.net/1/messages.json"
+    data = {
+        "token": api_token,
+        "user": user_key,
+        "message": message
+    }
+
+    response = requests.post(url, data=data)
+    print(response.json())
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -44,7 +59,10 @@ def on_message(client, userdata, msg):
 
         # Decode warnings
         warning_messages = []
-        if warnings & (1 << 13): warning_messages.append("DANGEROUS GAS LEVELS")
+        if warnings & (1 << 13): 
+            warning_messages.append("DANGEROUS GAS LEVELS")
+            send_pushover_notification("Smart House Alert! Motion detected in living room!")
+            
         if warnings & (1 << 12): warning_messages.append("LOW LIGHT LEVELS")
         if warnings & (1 << 11): warning_messages.append("HIGH WATER LEVEL")
         if warnings & (1 << 10): warning_messages.append("DRY SOIL (Hydropenia)")
