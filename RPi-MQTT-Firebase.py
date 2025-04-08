@@ -61,11 +61,19 @@ def on_message(client, userdata, msg):
         warning_messages = []
         if warnings & (1 << 13): 
             warning_messages.append("DANGEROUS GAS LEVELS")
-            send_pushover_notification("Smart House Alert! Motion detected in living room!")
+            send_pushover_notification("GAS")
             
-        if warnings & (1 << 12): warning_messages.append("LOW LIGHT LEVELS")
-        if warnings & (1 << 11): warning_messages.append("HIGH WATER LEVEL")
-        if warnings & (1 << 10): warning_messages.append("DRY SOIL (Hydropenia)")
+        if warnings & (1 << 12): 
+            warning_messages.append("LOW LIGHT LEVELS")
+            send_pushover_notification("LIGHT")
+            
+        if warnings & (1 << 11): 
+            warning_messages.append("HIGH WATER LEVEL")
+            send_pushover_notification("WATER")
+            
+        if warnings & (1 << 10): 
+            warning_messages.append("DRY SOIL (Hydropenia)")
+            send_pushover_notification("SOIL")
 
         # Get the current timestamp for data organization
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
