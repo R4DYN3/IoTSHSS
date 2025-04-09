@@ -16,14 +16,17 @@ enum sensor_warnings
 Servo servo_10;
 Servo servo_9;
 
-
+#pragma pack(1)
 struct SensorData {
     uint32_t gas;
     uint32_t light;
     uint32_t water;
     uint32_t soil;
     uint32_t PIR_motion;
+    uint16_t warnings;
 };
+#pragma pop
+
 
 // Function to read all sensor values and store them in a struct
 SensorData readSensors() {
@@ -38,32 +41,42 @@ SensorData readSensors() {
 
 // this is a function that will send data serially for the uno wifi board to pick up
 // the uno wifi board has two wires connected to pins 1 and 0 which are the serial output pins
-void sendData(SensorData data, uint16_t warnings)
+void sendData(SensorData data)
 {
     // Send structured sensor data in a readable format
-    Serial.print("Gas:"); Serial.print(data.gas);
-    Serial.print(", Light:"); Serial.print(data.light);
-    Serial.print(", Water:"); Serial.print(data.water);
-    Serial.print(", Soil:"); Serial.println(data.soil);
+    // Serial.print("Gas:"); Serial.print(data.gas);
+    // Serial.print(", Light:"); Serial.print(data.light);
+    // Serial.print(", Water:"); Serial.print(data.water);
+    // Serial.print(", Soil:"); Serial.println(data.soil);
 
-    // Print out warnings based on the warning bits
-    if (warnings & (1 << 13)) {
-        Serial.println("Warning: Gas Danger");
-    }
+    // // Print out warnings based on the warning bits
+    // if (warnings & (1 << 13)) {
+    //     Serial.println("Warning: Gas Danger");
+    // }
 
-    if (warnings & (1 << 12)) {
-        Serial.println("Warning: Low Light");
-    }
+    // if (warnings & (1 << 12)) {
+    //     Serial.println("Warning: Low Light");
+    // }
 
-    if (warnings & (1 << 11)) {
-        Serial.println("Warning: High Water Level");
-    }
+    // if (warnings & (1 << 11)) {
+    //     Serial.println("Warning: High Water Level");
+    // }
 
-    if (warnings & (1 << 10)) {
-        Serial.println("Warning: Dry Soil (Hydropenia)");
-    }
+    // if (warnings & (1 << 10)) {
+    //     Serial.println("Warning: Dry Soil (Hydropenia)");
+    // }
+    // Serial.write(0xAA); // start marker
+    // Serial.write((uint8_t*)&data, sizeof(SensorData));  // Send struct
+    // Serial.write((uint8_t*)&warnings, sizeof(uint16_t));
+    // Serial.write(0x55); // end marker
 
+    // delay(2000);  // Wait before sending data again
+    Serial.write(0xAA);  // Start marker
+    Serial.write((uint8_t*)&data, sizeof(SensorData));  // Send struct as bytes
+    Serial.write(0x55);  // End marker
+    Serial.flush();  // Ensure all data is sent before delay
     delay(2000);  // Wait before sending data again
+
 }
 // Bit layout (16 bits):
 //
@@ -71,43 +84,62 @@ void sendData(SensorData data, uint16_t warnings)
 //  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 //  V  V  V  V  V  V  V  V  V  V  V  V  V  V  V  V
 // Gas Light Rain Soil  motion[THE REST ARE RESERVERED / FUTURE USE]
+// gas: 15
+// Light: 14
+// Rain: 13
+// Soil: 12
+// Motion: 11
+// Incorrect pass: 10
+
+// .
+// .
+// .
+// relay button: unused could do tell user if relay is on ????: 04 
+// Send water signal via pushover: 03
+// Send soil signal via pushover: 02
+// Send gas signal via pushover: 01
+// Send light signal via pushover: 00
 // (1 = Warning, 0 = No Warning)
 
 
 
 // Function to process the sensor data and perform actions
-void setWarningBitfield(SensorData& data, uint16_t& warnings)
+void setWarningBitfield(SensorData& data, uint16_t notifications)
 {
     // Reset all warning bits to clear previous state
-    warnings = 0;
+    data.warnings = 0;
+    Serial.println("Notification inside set warning: " + String(notifications));
 
     // Gas sensor processing (set Gas Warning bit if gas exceeds threshold)
     if (data.gas > DANGER_GAS)
     {
-        warnings |= (1 << 13);  // Set the Gas Warning bit (bit 13)
+        data.warnings |= (1 << 13);  // Set the Gas Warning bit (bit 13)
     }
 
     // Light sensor processing (set Light Warning bit if light is below threshold)
     if (data.light < LOW_LIGHT)
     {
-        warnings |= (1 << 12);  // Set the Light Warning bit (bit 12)
+        data.warnings |= (1 << 12);  // Set the Light Warning bit (bit 12)
     }
 
     // Water sensor processing (set Water Warning bit if water exceeds threshold)
     if (data.water > RAIN_WATER)
     {
-        warnings |= (1 << 11);  // Set the Water Warning bit (bit 11)
+        data.warnings |= (1 << 11);  // Set the Water Warning bit (bit 11)
     }
 
     // Soil sensor processing (set Soil Warning bit if soil moisture is below threshold)
     if (data.soil > SOIL_HYDROPENIA)
     {
-        warnings |= (1 << 10);  // Set the Soil Warning bit (bit 10)
+        data.warnings |= (1 << 10);  // Set the Soil Warning bit (bit 10)
     }
     if (data.PIR_motion == 1) 
     {
-        warnings |= (1 << 9); // set motion warning bit (bit 9)
+        data.warnings |= (1 << 9); // set motion warning bit (bit 9)
     }
+
+    // // or it with notifications to get any notifications to send:
+    data.warnings |= notifications;
 }
 
 void set_roof_fan_on()
@@ -120,6 +152,14 @@ void set_roof_fan_off()
 {
   digitalWrite(7, LOW);
   digitalWrite(6, LOW);
+}
+void turn_white_led_on()
+{
+  digitalWrite(13, HIGH); 
+}
+void turn_white_led_off()
+{
+  digitalWrite(13, LOW); 
 }
 
 // this activates the self preserving features of the house
@@ -134,7 +174,7 @@ void active_sensor_mitigations(uint16_t warnings)
   if (warnings & (1 << 13))
   {
     set_roof_fan_on();
-    Serial.println("reached this control flow");
+    //Serial.println("reached this control flow");
     // [todo]: play the alarm 
   }
   else
@@ -165,7 +205,6 @@ void active_sensor_mitigations(uint16_t warnings)
   if (warnings & (1 << 9)) 
   {
     // [todo]: lock door / close window, maybe play alarm idk
-
   }
 }
 
@@ -396,48 +435,75 @@ void zelda()
   }
 }
 
-char serial_input;
-void user_control() {
-  switch (serial_input)
+String serial_buffer;
+uint16_t parse_serial_command(char input, SensorData* data) {
+
+
+  uint16_t notifications = 0; // lower half of this used for notifications, will be combined with warnings
+  char cmd = input;
+  Serial.println("command: " + char(cmd));
+  //String args = input.substring(1);  // everything after the command
+
+  switch (cmd)
   {
+    case 'a': // turn white led on
+      turn_white_led_on();
+      break;
+    case 'b':
+      turn_white_led_off();
+      break;
+    case 'h': //photocell on, show data
+      Serial.println("Sending photocell data...");
+      notifications |= (1 << 0);
+      Serial.println("Notification bit field: " + String(notifications));
+
+      // maybe make this something like "get weather update, then if the light is at certain levels display certain messages. "
+      break;
+    // case 's': //photocell off, no more data [note]: on the app they have mapped this to two separate funcs lol, won't use here. 
+    //   break;
+    case 'j':   //soil related. again maybe have some func that will give u an update on the soil 
+      break; 
+    case 'S':
+      break;    // soil related once again... 
+    case 'I':   // open door 
+      break;
+    case 'm':   // close door. 
+      break;
     case 'f':
       Serial.println("play a song");
-      Ode_to_Joy(); //todo make non blocking
+      Ode_to_Joy();  // TODO: make non-blocking
       break;
     case 'g':
-      zelda(); //todo: make non blocking 
+      zelda();  // TODO: make non-blocking
       break;
-    case 'r': 
+    case 'r':
+      Serial.println("turning fan on");
       set_roof_fan_on();
       break;
     case 's':
       set_roof_fan_off();
       break;
-    // case 't'://if val is 't'，program will circulate
-    //   servo1 = Serial.readStringUntil('#');
-    //   servo1_angle = String(servo1).toInt();
-    //   //servo_9.write(servo1_angle);//set the angle of servo connected to digital 9 to servo1_angle
-    //   delay(300);
-    //   break;//exit loop
-    // case 'u'://if val is 'u'，program will circulate
-    //   servo2 = Serial.readStringUntil('#');
-    //   servo2_angle = String(servo2).toInt();
-    //   //servo_10.write(servo2_angle);//set the angle of servo connected to digital 10 to servo2_angle
-    //   delay(300);
-    //   break;//exit loop
-    case 'v'://if val is 'v'，program will circulate
-      String led2 = Serial.readStringUntil('#');
-      volatile int value_led2 = String(led2).toInt();
-      analogWrite(5, value_led2); //PWM value of digital 5 is value_led2
-      break;//exit loop
-    case 'w'://if val is 'w'，program will circulate
-      Serial.println("reached fan pwm_control");
-      String fans_char = Serial.readStringUntil('#');
-      volatile int fans_val = String(fans_char).toInt();
+    case 'v': {
+      //int pwm = args.toInt();
+      Serial.print("Setting LED PWM to: ");
+      //Serial.println(pwm);
+      //analogWrite(5, pwm);
+      break;
+    }
+    case 'w': {
+      //int pwm = args.toInt();
+      Serial.print("Setting FAN PWM to: ");
+      //Serial.println(pwm);
       digitalWrite(7, LOW);
-      analogWrite(6, fans_val); //set PWM value of digital 6 to fans_val，the larger the value, the faster the fan
-      break;//exit loop
+      //analogWrite(6, pwm);
+      break;
+    }
+    default:
+      Serial.print("Unknown command: ");
+      Serial.println(cmd);
+      break;
   }
+  return notifications;
 }
 
 // controls door with password on front 
@@ -558,7 +624,7 @@ void lock_door() {
 
 
 void setup() {
-    Serial.begin(115200); // Use hardware Serial on pins 0,1
+    Serial.begin(9600); // Use hardware Serial on pins 0,1
     INITIALISE_LCD_SCREEN();
     INITIALISE_IO_PINS();
     INITIALISE_SERVO_MOTORS();
@@ -569,16 +635,32 @@ void setup() {
 
 uint16_t warning_bitfield = 0; //todo put this in it's appropriate place
 void loop() {
-    if (Serial.available() > 0) //serial reads the characters
-    {
-      serial_input = Serial.read();//set val to character read by serial    Serial.println(val);//output val character in new lines
-      Serial.println(serial_input);
-      user_control(); // blutooth functionality + can send data via serial to communicate with device
-      Serial.println("reached serial available");
-    }
+
     SensorData data = readSensors();            
-    setWarningBitfield(data, warning_bitfield);        
-    sendData(data, warning_bitfield);
+    uint16_t notifications = 0;
+
+    while (Serial.available() > 0) 
+    {
+        char c = Serial.read();  // Read one character at a time
+        Serial.print("Received: ");
+        Serial.println((int)c);
+        notifications = parse_serial_command(c, &data);  
+        Serial.println("Notification after parse: " + String(notifications));
+
+        if (c == '\n' || c == '#') {
+          // End of command — process the input
+          Serial.println("Parsing command:");
+          Serial.println(serial_buffer);
+          serial_buffer = "";  // Clear buffer for next command
+        } else 
+        {
+          serial_buffer += c;  // Accumulate input
+        }
+    }
+    Serial.println("Notification before set warning: " + String(notifications));
+    setWarningBitfield(data, notifications);        
+    Serial.println("Warning bit field: " + String(data.warnings));
+    sendData(data);
     active_sensor_mitigations(warning_bitfield);
 
     lock_door();
