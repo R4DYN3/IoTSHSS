@@ -6,7 +6,7 @@
 // sensor level warning nums
 enum sensor_warnings
 {
-  DANGER_GAS = 700,
+  DANGER_GAS = 24,
   LOW_LIGHT = 300, 
   RAIN_WATER = 800,
   SOIL_HYDROPENIA = 50
@@ -161,6 +161,33 @@ void turn_white_led_off()
 {
   digitalWrite(13, LOW); 
 }
+void turn_yellow_led_on()
+{
+  digitalWrite(5, HIGH); 
+}
+void turn_yellow_led_off()
+{
+  digitalWrite(5, LOW); 
+}
+
+
+void open_Window()
+{
+  servo_9.write(100);
+}
+void close_Window()
+{
+  servo_9.write(0);
+}
+void open_Door()
+{
+  servo_10.write(180);
+}
+
+void close_Door()
+{
+  servo_10.write(0);
+}
 
 // this activates the self preserving features of the house
 // gas: turn on fan and play warning noise 
@@ -204,8 +231,11 @@ void active_sensor_mitigations(uint16_t warnings)
   // soil hydropenia: 
   if (warnings & (1 << 9)) 
   {
+    close_Door();
+    close_Window();
     // [todo]: lock door / close window, maybe play alarm idk
   }
+
 }
 
 
@@ -240,7 +270,7 @@ void INITIALISE_IO_PINS()
   pinMode(A2, INPUT);//set A2 to input
 
   pinMode(12, OUTPUT);//set digital 12 to output
-  pinMode(5, OUTPUT);//set digital 5 to output
+  pinMode(5, OUTPUT);//set digital 5 to output // i think this is yellow led?
 }
 void INITIALISE_SERVO_MOTORS()
 {
@@ -407,6 +437,7 @@ void Ode_to_Joy()//play Ode to joy song
     delay(300 * ode2joy_durt[x]); // todo: switch to mili to avoid delaying rest of program 
   }
   noTone(3);
+  return;
 }
 
 void zelda()
@@ -433,6 +464,7 @@ void zelda()
     // stop the waveform generation before the next note.
     noTone(tonepin);
   }
+  return;
 }
 
 String serial_buffer;
@@ -444,8 +476,57 @@ uint16_t parse_serial_command(char input, SensorData* data) {
   Serial.println("command: " + char(cmd));
   //String args = input.substring(1);  // everything after the command
 
+// For slider commands with format: "<char> <value> #"
+  if (cmd == 'v' || cmd == 'w' || cmd == 't' || cmd == 'u') {
+    Serial.println("Parsing slider command...");
+
+    // Read characters until we hit '#'
+    char buffer[6] = {0}; // to hold up to 5-digit values (safe margin)
+    byte idx = 0;
+    char chr;
+
+    // Read until '#' or buffer is full
+    while (idx < 5) 
+    {
+      while (!Serial.available()); // wait for input
+      chr = Serial.read();
+      if (chr == '#') break;
+      if (chr >= '0' && chr <= '9') 
+      {
+        buffer[idx++] = chr;
+      }
+    }
+    buffer[idx] = '\0'; // Null terminate
+    int value = atoi(buffer);  // convert string to integer
+
+    Serial.print("Parsed value: ");
+    Serial.println(value);
+
+    // this is kind of busted, but will do another switch statement for the variable slider commands:
+    switch(input)
+    {
+      case 't': // door open angle
+        // easy!
+        servo_10.write(value);
+        break;
+      case 'u': // window open angle
+        // easy!
+        servo_9.write(value);
+        break;
+      case 'v': // yellow LED brightness
+        analogWrite(5, value);
+        break;
+      case 'w': // Fan rotation speed
+        analogWrite(6, value);
+        break;
+    }
+    return 0;
+  }
+
   switch (cmd)
   {
+    case 'w':
+      Serial.println("Turn the fans on slider");
     case 'a': // turn white led on
       turn_white_led_on();
       break;
@@ -455,19 +536,42 @@ uint16_t parse_serial_command(char input, SensorData* data) {
     case 'h': //photocell on, show data
       Serial.println("Sending photocell data...");
       notifications |= (1 << 0);
-      Serial.println("Notification bit field: " + String(notifications));
+      //Serial.println("Notification bit field: " + String(notifications));
 
       // maybe make this something like "get weather update, then if the light is at certain levels display certain messages. "
       break;
     // case 's': //photocell off, no more data [note]: on the app they have mapped this to two separate funcs lol, won't use here. 
     //   break;
     case 'j':   //soil related. again maybe have some func that will give u an update on the soil 
+      Serial.println("Sending soil data...");
+      notifications |= (1 << 2);
       break; 
     case 'S':
+      Serial.println("Sending soil data...");   //atm just does the same thing, 
+      notifications |= (1 << 2);
       break;    // soil related once again... 
-    case 'I':   // open door 
+    case 'i': // gas sensor info
+      notifications |= (1 << 1);
+    case 'k': // water sensor info
+      notifications |= (1 << 3);
+
+    case 'n':   // open window
+      open_Window();
+      break;
+    case 'o':   // close window
+      close_Window();
+      break;
+    case 'l':   // open door 
+      open_Door();
       break;
     case 'm':   // close door. 
+      close_Door();
+      break;
+    case 'p': // yellow light on
+      turn_yellow_led_on();
+      break;
+    case 'q':   //yellow light off.
+      turn_yellow_led_off();
       break;
     case 'f':
       Serial.println("play a song");
@@ -488,14 +592,6 @@ uint16_t parse_serial_command(char input, SensorData* data) {
       Serial.print("Setting LED PWM to: ");
       //Serial.println(pwm);
       //analogWrite(5, pwm);
-      break;
-    }
-    case 'w': {
-      //int pwm = args.toInt();
-      Serial.print("Setting FAN PWM to: ");
-      //Serial.println(pwm);
-      digitalWrite(7, LOW);
-      //analogWrite(6, pwm);
       break;
     }
     default:
@@ -644,24 +740,39 @@ void loop() {
         char c = Serial.read();  // Read one character at a time
         Serial.print("Received: ");
         Serial.println((int)c);
+
         notifications = parse_serial_command(c, &data);  
         Serial.println("Notification after parse: " + String(notifications));
 
-        if (c == '\n' || c == '#') {
-          // End of command — process the input
-          Serial.println("Parsing command:");
-          Serial.println(serial_buffer);
-          serial_buffer = "";  // Clear buffer for next command
-        } else 
-        {
-          serial_buffer += c;  // Accumulate input
-        }
+        // if (c == 'v' || c == 'w' || c == 't' || c == 'u')
+        // {
+        //   Serial.println("reached this slider decision");
+        //   char chr; 
+        //   char slider_val[3] = "000";
+        //   int count = 2;
+        //   while(chr != '#')
+        //   {
+        //     chr = Serial.read();
+        //     slider_val[count] = chr;
+        //     count--;
+        //   }
+        //   Serial.println("slider val: " + String(slider_val));
+        //   // End of command — process the input
+        // }
+        //   Serial.println("Parsing command:");
+        //   Serial.println(serial_buffer);
+        //   serial_buffer = "";  // Clear buffer for next command
+        // } else 
+        // {
+        //   serial_buffer += c;  // Accumulate input
+        // }
     }
     Serial.println("Notification before set warning: " + String(notifications));
     setWarningBitfield(data, notifications);        
     Serial.println("Warning bit field: " + String(data.warnings));
     sendData(data);
-    active_sensor_mitigations(warning_bitfield);
+    Serial.println("gas level: " + String(data.gas));
+    active_sensor_mitigations(data.warnings);
 
     lock_door();
 }
