@@ -6,7 +6,7 @@
 // sensor level warning nums
 enum sensor_warnings
 {
-  DANGER_GAS = 24,
+  DANGER_GAS = 200,
   LOW_LIGHT = 300, 
   RAIN_WATER = 800,
   SOIL_HYDROPENIA = 50
@@ -43,34 +43,6 @@ SensorData readSensors() {
 // the uno wifi board has two wires connected to pins 1 and 0 which are the serial output pins
 void sendData(SensorData data)
 {
-    // Send structured sensor data in a readable format
-    // Serial.print("Gas:"); Serial.print(data.gas);
-    // Serial.print(", Light:"); Serial.print(data.light);
-    // Serial.print(", Water:"); Serial.print(data.water);
-    // Serial.print(", Soil:"); Serial.println(data.soil);
-
-    // // Print out warnings based on the warning bits
-    // if (warnings & (1 << 13)) {
-    //     Serial.println("Warning: Gas Danger");
-    // }
-
-    // if (warnings & (1 << 12)) {
-    //     Serial.println("Warning: Low Light");
-    // }
-
-    // if (warnings & (1 << 11)) {
-    //     Serial.println("Warning: High Water Level");
-    // }
-
-    // if (warnings & (1 << 10)) {
-    //     Serial.println("Warning: Dry Soil (Hydropenia)");
-    // }
-    // Serial.write(0xAA); // start marker
-    // Serial.write((uint8_t*)&data, sizeof(SensorData));  // Send struct
-    // Serial.write((uint8_t*)&warnings, sizeof(uint16_t));
-    // Serial.write(0x55); // end marker
-
-    // delay(2000);  // Wait before sending data again
     Serial.write(0xAA);  // Start marker
     Serial.write((uint8_t*)&data, sizeof(SensorData));  // Send struct as bytes
     Serial.write(0x55);  // End marker
@@ -94,13 +66,12 @@ void sendData(SensorData data)
 // .
 // .
 // .
-// relay button: unused could do tell user if relay is on ????: 04 
+// relay status button: 04 
 // Send water signal via pushover: 03
 // Send soil signal via pushover: 02
 // Send gas signal via pushover: 01
 // Send light signal via pushover: 00
 // (1 = Warning, 0 = No Warning)
-
 
 
 // Function to process the sensor data and perform actions
@@ -137,63 +108,114 @@ void setWarningBitfield(SensorData& data, uint16_t notifications)
     {
         data.warnings |= (1 << 9); // set motion warning bit (bit 9)
     }
-
     // // or it with notifications to get any notifications to send:
     data.warnings |= notifications;
+    return;
 }
-
+// ------------------------//
+// helper funcs for adjustable things on the house
 void set_roof_fan_on()
 {
-  digitalWrite(7, LOW);
-  digitalWrite(6, HIGH);
+    digitalWrite(7, LOW);
+    digitalWrite(6, HIGH);
 }
 
 void set_roof_fan_off()
 {
-  digitalWrite(7, LOW);
-  digitalWrite(6, LOW);
+    digitalWrite(7, LOW);
+    digitalWrite(6, LOW);
+    return;
 }
+
 void turn_white_led_on()
 {
-  digitalWrite(13, HIGH); 
+    digitalWrite(13, HIGH); 
+    return;
+
 }
+
 void turn_white_led_off()
 {
-  digitalWrite(13, LOW); 
+    digitalWrite(13, LOW); 
+    return;
 }
 void turn_yellow_led_on()
 {
-  digitalWrite(5, HIGH); 
+    digitalWrite(5, HIGH); 
+    return;
 }
 void turn_yellow_led_off()
 {
-  digitalWrite(5, LOW); 
+    digitalWrite(5, LOW); 
+    return;
 }
 
 
 void open_Window()
 {
-  servo_9.write(100);
+    servo_9.write(100);
+    return;
 }
+
 void close_Window()
 {
-  servo_9.write(0);
+    servo_9.write(0);
+    return;
 }
+
 void open_Door()
 {
-  servo_10.write(180);
+    servo_10.write(180);
+    return;
 }
 
 void close_Door()
 {
-  servo_10.write(0);
+    servo_10.write(0);
+    return;
+}
+// ------------------------//
+// ------------------------//
+
+void sound_alarm()
+{
+    tone(3, 440);
+      delay(125);
+      delay(100);
+      noTone(3);
+      delay(100);
+      tone(3, 440);
+      delay(125);
+      delay(100);
+      noTone(3);
+      delay(300);
+      return;
 }
 
-// this activates the self preserving features of the house
-// gas: turn on fan and play warning noise 
-// low light: turn on a light
-// high water: [todo]: idk if this needs an alarm warning??? 
-// soil hydropenia: [todo]: I also don't think this needs an alarm
+void sound_alarm_soil()
+{
+    tone(3, 999);
+      delay(125);
+      delay(100);
+      noTone(3);
+      delay(100);
+      tone(3, 999);
+      delay(125);
+      delay(100);
+      noTone(3);
+      delay(300);
+      return;
+}
+
+
+// Function: active_sensor_mitigations
+// Purpose: This activates the self preserving features of the house
+// thresholds: Thresholds set in the sensor_warnings enum at the start of the code.
+// gas level above threshold: turn on fan and play warning noise 
+// low light: turn on the white LED light
+// high water: if the window is open, close it. 
+// soil hydropenia: play another alarm. 
+
 void active_sensor_mitigations(uint16_t warnings)
 {
 
@@ -201,7 +223,7 @@ void active_sensor_mitigations(uint16_t warnings)
   if (warnings & (1 << 13))
   {
     set_roof_fan_on();
-    //Serial.println("reached this control flow");
+    sound_alarm();
     // [todo]: play the alarm 
   }
   else
@@ -221,18 +243,27 @@ void active_sensor_mitigations(uint16_t warnings)
   // high water level:
   if (warnings & (1 << 11))
   {
+    close_Window();
     // [todo]: future feature...
   }
   // soil hydropenia: 
   if (warnings & (1 << 10)) 
   {
+    sound_alarm_soil();
     // [todo]: future feature...
   }
-  // soil hydropenia: 
+  // Motion detected: 
   if (warnings & (1 << 9)) 
   {
+    Serial.print("Motion detected!!!!!!!!!!!!!!!!!");
     close_Door();
     close_Window();
+    // [todo]: lock door / close window, maybe play alarm idk
+  }
+  // todo: incorrect password attempt: 
+  if (warnings & (1 << 10)) 
+  {
+    Serial.print("Incorrect password detected!!!!!!!!!!!!!!!!!");
     // [todo]: lock door / close window, maybe play alarm idk
   }
 
@@ -246,11 +277,12 @@ void INITIALISE_LCD_SCREEN()
     mylcd.init();
     mylcd.backlight();//initialize LCD
     mylcd.setCursor(1 - 1, 1 - 1);
-    mylcd.print("Enter password:");
+    mylcd.print("Good day :D");
 }
 
 
-
+const int BUTTON_INPUT = 4;
+const int CONFIRM_BUTTON = 8;
 //todo: document what each pin is connected to and what the sensors do.
 void INITIALISE_IO_PINS()
 {
@@ -259,8 +291,10 @@ void INITIALISE_IO_PINS()
   digitalWrite(7, HIGH); //set digital 7 to high level
   digitalWrite(6, HIGH); //set digital 6 to high level
   
-  pinMode(4, INPUT);//set digital 4 to input
-  pinMode(8, INPUT);//set digital 8 to input
+  pinMode(BUTTON_INPUT, INPUT_PULLUP);
+  pinMode(CONFIRM_BUTTON, INPUT_PULLUP);
+  //pinMode(4, INPUT);//set digital 4 to input
+  //pinMode(8, INPUT);//set digital 8 to input
   pinMode(2, INPUT);//set digital 2 to input [PIR motion sensor]
   pinMode(3, OUTPUT);//set digital 3 to output [buzzer: used for playing songs / alarms]
   pinMode(A0, INPUT);//set A0 to input
@@ -274,7 +308,6 @@ void INITIALISE_IO_PINS()
 }
 void INITIALISE_SERVO_MOTORS()
 {
-  
   servo_9.attach(9);//make servo connect to digital 9
   servo_10.attach(10);//make servo connect to digital 10
   servo_9.write(0);//set servo connected digital 9 to 0°
@@ -467,10 +500,10 @@ void zelda()
   return;
 }
 
+
 String serial_buffer;
-uint16_t parse_serial_command(char input, SensorData* data) {
-
-
+uint16_t parse_serial_command(char input, SensorData* data) 
+{
   uint16_t notifications = 0; // lower half of this used for notifications, will be combined with warnings
   char cmd = input;
   Serial.println("command: " + char(cmd));
@@ -552,9 +585,10 @@ uint16_t parse_serial_command(char input, SensorData* data) {
       break;    // soil related once again... 
     case 'i': // gas sensor info
       notifications |= (1 << 1);
+      break;
     case 'k': // water sensor info
       notifications |= (1 << 3);
-
+      break;
     case 'n':   // open window
       open_Window();
       break;
@@ -587,13 +621,12 @@ uint16_t parse_serial_command(char input, SensorData* data) {
     case 's':
       set_roof_fan_off();
       break;
-    case 'v': {
-      //int pwm = args.toInt();
-      Serial.print("Setting LED PWM to: ");
-      //Serial.println(pwm);
-      //analogWrite(5, pwm);
+    case 'c':   //get relay info 
+      notifications |= (1 << 4);
       break;
-    }
+    case 'd':     //get relay info 
+      notifications |= (1 << 5);
+      break;
     default:
       Serial.print("Unknown command: ");
       Serial.println(cmd);
@@ -602,170 +635,137 @@ uint16_t parse_serial_command(char input, SensorData* data) {
   return notifications;
 }
 
-// controls door with password on front 
-void lock_door() {
-  volatile int button1 = digitalRead(4);// assign the value of digital 4 to button1
-  volatile int button2 = digitalRead(8);//assign the value of digital 8 to button2
-  volatile int btn1_num;
-  volatile int btn2_num;
+//String password = ".--.-.";
+#define MAX_PASSWORD_LENGTH 16
 
-  String passwd;
-  String pass;
+char password[] = "..";
+char userInput[MAX_PASSWORD_LENGTH + 1] = "";       // +1 for null terminator
+char displayInput[MAX_PASSWORD_LENGTH + 1] = "";
 
-  if (button1 == 0)//if variablebutton1 is 0
-  {
-    delay(10);//delay in 10ms
-    while (button1 == 0) //if variablebutton1 is 0，program will circulate
-    {
-      button1 = digitalRead(4);// assign the value of digital 4 to button1
-      btn1_num = btn1_num + 1;//variable btn1_num plus 1
-      delay(100);// delay in 100ms
+void listenForPasswordInput(uint16_t* notifications) {
+    static int pressDuration = 0;
+    int inputIndex = 0;
+
+    if (digitalRead(CONFIRM_BUTTON) == LOW) {
+        delay(20);
+        while (digitalRead(CONFIRM_BUTTON) == LOW);  // wait for release
+
+        mylcd.clear();
+        mylcd.setCursor(0, 1);
+        mylcd.print("Enter a password!");
+
+        inputIndex = 0;
+        userInput[0] = '\0';
+        displayInput[0] = '\0';
+
+        Serial.println("Listening...");
+        while (1) {
+            // Listen for dot/dash input
+            if (digitalRead(BUTTON_INPUT) == LOW) 
+            {
+                delay(10);
+                pressDuration = 0;
+                while (digitalRead(BUTTON_INPUT) == LOW) 
+                {
+                    pressDuration++;
+                    delay(100);
+                }
+                if (inputIndex < MAX_PASSWORD_LENGTH) {
+                    if (pressDuration < 5) {
+                        userInput[inputIndex] = '.';
+                        displayInput[inputIndex] = '.';
+                        Serial.println(".");
+                    } else {
+                        userInput[inputIndex] = '-';
+                        displayInput[inputIndex] = '-';
+                        Serial.println("-");
+                    }
+                    inputIndex++;
+                    userInput[inputIndex] = '\0';      // null-terminate string
+                    displayInput[inputIndex] = '\0';   // null-terminate display
+                    
+                    mylcd.clear();
+                    mylcd.setCursor(0, 1);
+                    mylcd.print(displayInput);
+
+
+                    //updateLCD(displayInput);
+                    Serial.print("user input: ");
+                    Serial.println(displayInput);
+                }
+            }
+            // Confirm password entry
+            if (digitalRead(CONFIRM_BUTTON) == LOW) {
+                delay(20);
+                while (digitalRead(CONFIRM_BUTTON) == LOW);
+                break;
+            }
+        }
+        validatePassword(userInput, notifications); // Pass userInput to validate
     }
+}
 
-  }
-  if (btn1_num >= 1 && btn1_num < 5) //1≤if variablebtn1_num<5
-  {
-    Serial.print(".");
-    Serial.print("");
-    passwd = String(passwd) + String(".");//set passwd 
-    pass = String(pass) + String(".");//set pass
-    //LCD shows pass at the first row and column
-    mylcd.setCursor(2 - 1, 2 - 1);
-    mylcd.print(pass);
-  }
-  if (btn1_num >= 5)
-    //if variablebtn1_num ≥5
-  {
-    Serial.print("-");
-    passwd = String(passwd) + String("-");//Set passwd 
-    pass = String(pass) + String("-");//set pass
-    //LCD shows pass at the first row and column
-    mylcd.setCursor(1 - 1, 2 - 1);
-    mylcd.print(pass);
+void updateLCD(String content) 
+{
+  mylcd.clear();
+  mylcd.setCursor(0, 1);
+  Serial.println("content: " + content);
+  mylcd.print(content);
+}
 
-  }
-  if (button2 == 0) //if variablebutton2 is 0
-  {
-    delay(10);
-    if (button2 == 0)//if variablebutton2 is 0
-    {
-      if (passwd == ".--.-.")//if passwd is ".--.-."
-      {
-        mylcd.clear();//clear LCD screen
-        //LCD shows "open!" at first character on second row
-        mylcd.setCursor(1 - 1, 2 - 1);
+void validatePassword(const char* input, uint16_t* notifications)
+{
+    if (strcmp(input, password) == 0) {
+        mylcd.clear();
+        mylcd.setCursor(0, 1);
         mylcd.print("open!");
-        servo_9.write(100);//set servo connected to digital 9 to 100°
-        delay(300);
-        delay(5000);
-        passwd = "";
-        pass = "";
-        mylcd.clear();//clear LCD screen
-        //LCD shows "password:"at first character on first row
-        mylcd.setCursor(1 - 1, 1 - 1);
-        mylcd.print("password:");
-
-      } else //Otherwise
-      {
-        mylcd.clear();//clear LCD screen
-        //LCD shows "error!"at first character on first row
-        mylcd.setCursor(1 - 1, 1 - 1);
+        open_Door();
+        delay(5000);  // Optional: use millis() for non-blocking
+        close_Door();
+    } 
+    else {
+        mylcd.clear();
+        mylcd.setCursor(0, 0);
         mylcd.print("error!");
-        passwd = "";
-        pass = "";
         delay(2000);
-        //LCD shows "again" at first character on first row
-        mylcd.setCursor(1 - 1, 1 - 1);
-        mylcd.print("again");
-      }
+        mylcd.clear();
+        mylcd.setCursor(0, 0);
+        mylcd.print("try again");
+        close_Door();
+        sound_alarm();
+        *notifications |= (1 << 10);   // Incorrect password bit
     }
-  }
-  //int infrar_motion = digitalRead(2);//assign the value of digital 2 to infrar
-  //if (infrar_motion == 0 && (val != 'l' && val != 't'))
-    //if variable infrar is 0 and val is not 'l' either 't'
-  // {
-  //   //servo_9.write(0);//set servo connected to digital 9 to 0°
-  //   delay(50);
-  // }
-  // if (button2 == 0)//if variablebutton2 is 0
-  // {
-  //   delay(10);
-  //   while (button2 == 0) //if variablebutton2 is 0，program will circulate
-  //   {
-  //     button2 = digitalRead(8);//assign the value of digital 8 to button2
-  //     btn2_num = btn2_num + 1;//variable btn2_num plus 1
-  //     delay(100);
-  //     if (btn2_num >= 15)//if variablebtn2_num ≥15
-  //     {
-  //       tone(3, 532);
-  //       delay(125);
-  //       mylcd.clear();//clear LCD screen
-  //       //LCD shows "password:" at the first character on first row
-  //       mylcd.setCursor(1 - 1, 1 - 1);
-  //       mylcd.print("password:");
-  //       //LCD shows "wait" at the first character on first row
-  //       mylcd.setCursor(1 - 1, 1 - 1);
-  //       mylcd.print("wait");
-  //     } else//Otherwise
-  //     {
-  //       noTone(3);//digital 3 stops playing music
-  //     }
-   // }
 
-  //}
-  btn1_num = 0;//set btn1_num to 0
-  btn2_num = 0;//set btn2_num to 0
+    // Reset LCD prompt for next password entry
+    delay(1000);
+    mylcd.clear();
+    mylcd.setCursor(0, 0);
+    mylcd.print("password:");
 }
 
 
-
-void setup() {
+void setup() 
+{
     Serial.begin(9600); // Use hardware Serial on pins 0,1
     INITIALISE_LCD_SCREEN();
     INITIALISE_IO_PINS();
     INITIALISE_SERVO_MOTORS();
-
-    // want to test all the sensors and make sure they work: (todo): perhaps bind to a key? make it's own func
-
 } 
 
+
 uint16_t warning_bitfield = 0; //todo put this in it's appropriate place
-void loop() {
-
-    SensorData data = readSensors();            
+void loop() 
+{
     uint16_t notifications = 0;
-
+    listenForPasswordInput(&notifications);
+    SensorData data = readSensors();            
     while (Serial.available() > 0) 
     {
         char c = Serial.read();  // Read one character at a time
         Serial.print("Received: ");
         Serial.println((int)c);
-
         notifications = parse_serial_command(c, &data);  
         Serial.println("Notification after parse: " + String(notifications));
-
-        // if (c == 'v' || c == 'w' || c == 't' || c == 'u')
-        // {
-        //   Serial.println("reached this slider decision");
-        //   char chr; 
-        //   char slider_val[3] = "000";
-        //   int count = 2;
-        //   while(chr != '#')
-        //   {
-        //     chr = Serial.read();
-        //     slider_val[count] = chr;
-        //     count--;
-        //   }
-        //   Serial.println("slider val: " + String(slider_val));
-        //   // End of command — process the input
-        // }
-        //   Serial.println("Parsing command:");
-        //   Serial.println(serial_buffer);
-        //   serial_buffer = "";  // Clear buffer for next command
-        // } else 
-        // {
-        //   serial_buffer += c;  // Accumulate input
-        // }
     }
     Serial.println("Notification before set warning: " + String(notifications));
     setWarningBitfield(data, notifications);        
@@ -773,6 +773,4 @@ void loop() {
     sendData(data);
     Serial.println("gas level: " + String(data.gas));
     active_sensor_mitigations(data.warnings);
-
-    lock_door();
 }
