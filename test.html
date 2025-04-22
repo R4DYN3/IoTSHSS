@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Home Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    canvas {
+      max-width: 700px;
+      margin: 20px auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">Smart Home Sensor Dashboard</h1>
+  <canvas id="gasChart"></canvas>
+  <canvas id="lightChart"></canvas>
+  <canvas id="motionChart"></canvas>
+  <canvas id="soilChart"></canvas>
+  <canvas id="warningsChart"></canvas>
+
+  <script src="script.js"></script>
+</body>
+</html>
