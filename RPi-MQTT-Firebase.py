@@ -75,6 +75,14 @@ def on_message(client, userdata, msg):
             warning_messages.append("WARNING: DRY SOIL (Hydropenia)")
             send_pushover_notification("SOIL")
 
+        if warnings & (1 << 9): 
+            warning_messages.append("WARNING: MOTION DETECTED")
+            send_pushover_notification("WARNING: MOTION DETECTED")
+
+        if warnings & (1 << 8): 
+            warning_messages.append("WARNING: INCORRECT PASSWORD ATTEMPT DETECTED")
+            send_pushover_notification("WARNING: INCORRECT PASSWORD ATTEMPT DETECTED")
+
         # Get the current timestamp for data organization
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
