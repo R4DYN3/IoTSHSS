@@ -6,7 +6,7 @@
 // sensor level warning nums
 enum sensor_warnings
 {
-  DANGER_GAS = 200,
+  DANGER_GAS = 1000,
   LOW_LIGHT = 300, 
   RAIN_WATER = 800,
   SOIL_HYDROPENIA = 50
@@ -79,7 +79,7 @@ void setWarningBitfield(SensorData& data, uint16_t notifications)
 {
     // Reset all warning bits to clear previous state
     data.warnings = 0;
-    Serial.println("Notification inside set warning: " + String(notifications));
+    //Serial.println("Notification inside set warning: " + String(notifications));
 
     // Gas sensor processing (set Gas Warning bit if gas exceeds threshold)
     if (data.gas > DANGER_GAS)
@@ -224,7 +224,6 @@ void active_sensor_mitigations(uint16_t warnings)
   {
     set_roof_fan_on();
     sound_alarm();
-    // [todo]: play the alarm 
   }
   else
   {
@@ -258,10 +257,9 @@ void active_sensor_mitigations(uint16_t warnings)
     Serial.print("Motion detected!!!!!!!!!!!!!!!!!");
     close_Door();
     close_Window();
-    // [todo]: lock door / close window, maybe play alarm idk
   }
   // todo: incorrect password attempt: 
-  if (warnings & (1 << 10)) 
+  if (warnings & (1 << 8)) 
   {
     Serial.print("Incorrect password detected!!!!!!!!!!!!!!!!!");
     // [todo]: lock door / close window, maybe play alarm idk
@@ -304,7 +302,7 @@ void INITIALISE_IO_PINS()
   pinMode(A2, INPUT);//set A2 to input
 
   pinMode(12, OUTPUT);//set digital 12 to output
-  pinMode(5, OUTPUT);//set digital 5 to output // i think this is yellow led?
+  pinMode(5, OUTPUT);//set digital 5 to output
 }
 void INITIALISE_SERVO_MOTORS()
 {
@@ -491,7 +489,7 @@ void zelda()
     // we only play the note for 90% of the duration, leaving 10% as a pause
     tone(tonepin, zelda_melody[thisNote], noteDuration*0.9);
 
-    // Wait for the specief duration before playing the next note.
+    // Wait for the specific duration before playing the next note.
     delay(noteDuration);
     
     // stop the waveform generation before the next note.
@@ -509,7 +507,7 @@ uint16_t parse_serial_command(char input, SensorData* data)
   Serial.println("command: " + char(cmd));
   //String args = input.substring(1);  // everything after the command
 
-// For slider commands with format: "<char> <value> #"
+// For slider commands with format: "<char> <value> #" ~ how the app sends data to the bluetooth module
   if (cmd == 'v' || cmd == 'w' || cmd == 't' || cmd == 'u') {
     Serial.println("Parsing slider command...");
 
@@ -535,7 +533,6 @@ uint16_t parse_serial_command(char input, SensorData* data)
     Serial.print("Parsed value: ");
     Serial.println(value);
 
-    // this is kind of busted, but will do another switch statement for the variable slider commands:
     switch(input)
     {
       case 't': // door open angle
@@ -569,13 +566,10 @@ uint16_t parse_serial_command(char input, SensorData* data)
     case 'h': //photocell on, show data
       Serial.println("Sending photocell data...");
       notifications |= (1 << 0);
-      //Serial.println("Notification bit field: " + String(notifications));
-
-      // maybe make this something like "get weather update, then if the light is at certain levels display certain messages. "
       break;
     // case 's': //photocell off, no more data [note]: on the app they have mapped this to two separate funcs lol, won't use here. 
     //   break;
-    case 'j':   //soil related. again maybe have some func that will give u an update on the soil 
+    case 'j':   //soil related. 
       Serial.println("Sending soil data...");
       notifications |= (1 << 2);
       break; 
@@ -609,10 +603,10 @@ uint16_t parse_serial_command(char input, SensorData* data)
       break;
     case 'f':
       Serial.println("play a song");
-      Ode_to_Joy();  // TODO: make non-blocking
+      Ode_to_Joy();  
       break;
     case 'g':
-      zelda();  // TODO: make non-blocking
+      zelda();  
       break;
     case 'r':
       Serial.println("turning fan on");
@@ -621,10 +615,10 @@ uint16_t parse_serial_command(char input, SensorData* data)
     case 's':
       set_roof_fan_off();
       break;
-    case 'c':   //get relay info 
+    case 'c':   
       notifications |= (1 << 4);
       break;
-    case 'd':     //get relay info 
+    case 'd':    
       notifications |= (1 << 5);
       break;
     default:
@@ -635,7 +629,7 @@ uint16_t parse_serial_command(char input, SensorData* data)
   return notifications;
 }
 
-//String password = ".--.-.";
+//String password = "..";
 #define MAX_PASSWORD_LENGTH 16
 
 char password[] = "..";
@@ -720,7 +714,7 @@ void validatePassword(const char* input, uint16_t* notifications)
         mylcd.setCursor(0, 1);
         mylcd.print("open!");
         open_Door();
-        delay(5000);  // Optional: use millis() for non-blocking
+        delay(5000);  
         close_Door();
     } 
     else {
@@ -733,7 +727,7 @@ void validatePassword(const char* input, uint16_t* notifications)
         mylcd.print("try again");
         close_Door();
         sound_alarm();
-        *notifications |= (1 << 10);   // Incorrect password bit
+        *notifications |= (1 << 8);   // Incorrect password bit
     }
 
     // Reset LCD prompt for next password entry
@@ -753,12 +747,12 @@ void setup()
 } 
 
 
-uint16_t warning_bitfield = 0; //todo put this in it's appropriate place
+uint16_t warning_bitfield = 0; 
 void loop() 
 {
     uint16_t notifications = 0;
     listenForPasswordInput(&notifications);
-    SensorData data = readSensors();            
+    SensorData data = readSensors(); 
     while (Serial.available() > 0) 
     {
         char c = Serial.read();  // Read one character at a time
