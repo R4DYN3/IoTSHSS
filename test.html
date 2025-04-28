@@ -1,26 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Smart Home Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Gauge.js -->
+  <script src="https://cdn.jsdelivr.net/npm/gaugeJS/dist/gauge.min.js"></script>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    canvas {
-      max-width: 700px;
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 20px 0;
+      font-size: 24px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .dashboard {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 20px;
+      gap: 20px;
+    }
+    .chart-container {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      width: 420px;
+    }
+    .gauge-container {
+      background: white;
+      padding: 20px;
       margin: 20px auto;
-      display: block;
+      width: 300px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">Smart Home Sensor Dashboard</h1>
-  <canvas id="gasChart"></canvas>
-  <canvas id="lightChart"></canvas>
-  <canvas id="motionChart"></canvas>
-  <canvas id="soilChart"></canvas>
-  <canvas id="warningsChart"></canvas>
+
+  <header>🏠 Smart Home Sensor Dashboard</header>
+
+  <div class="gauge-container">
+    <h3>Gas Level Gauge</h3>
+    <canvas id="gaugeCanvas" width="250" height="150"></canvas>
+  </div>
+
+  <div class="dashboard">
+    <div class="chart-container"><canvas id="gasChart"></canvas></div>
+    <div class="chart-container"><canvas id="lightChart"></canvas></div>
+    <div class="chart-container"><canvas id="motionChart"></canvas></div>
+    <div class="chart-container"><canvas id="soilChart"></canvas></div>
+    <div class="chart-container"><canvas id="warningsChart"></canvas></div>
+    <div class="chart-container"><canvas id="waterChart"></canvas></div>
+  </div>
 
   <script src="script.js"></script>
 </body>
